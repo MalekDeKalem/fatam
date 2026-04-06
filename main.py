@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 
 
-base_path = "/home/dorian/Documents/CIA/BraTS-Africa/95_Glioma/BraTS-SSA-00002-000/"
+base_path = "./CIA/BraTS-Africa/95_Glioma/BraTS-SSA-00002-000/"
 file = "Healthy-Total-Body-CTs-016.nii"
 
 
@@ -162,8 +162,8 @@ class Slider2DProperties:
     @dataclass
     class Position:
         coordinate_system: int = Coordinate.CoordinateSystem.VTK_NORMALIZED_VIEWPORT
-        point1: Tuple = (0.1, 0.1)
-        point2: Tuple = (0.9, 0.1)
+        point1: tuple = (0.1, 0.1)
+        point2: tuple = (0.9, 0.1)
 
     @dataclass
     class Range:
