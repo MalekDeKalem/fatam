@@ -217,15 +217,25 @@ def create_images(path, output_name):
     plt.savefig(output_name + ".png" , dpi=200)
     plt.close()
 
+def extract_time_component(image, t):
+    extract = vtk.vtkImageExtractComponents()
+    extract.SetInputData(image)
+    extract.SetComponents(t)
+    extract.Update()
+    return extract.GetOutput()
+
 def convert_nifti_to_vtk(nifti_file):
     reader = vtk.vtkNIFTIImageReader()
     reader.SetFileName(nifti_file)
     reader.Update()
+    image = reader.GetOutput()
+
+    print(reader)
 
     polydata = vtk.vtkPolyData()
 
     mc = vtk.vtkMarchingCubes()
-    mc.SetInputData(reader.GetOutput())
+    mc.SetInputData(image)
     mc.SetValue(0, 0.5)
     mc.Update()
 
@@ -237,10 +247,12 @@ def convert_nifti_to_vtk(nifti_file):
 
 
 if __name__ == "__main__":
+    # main volume
     file = sys.argv[1]
     nifti_file = os.path.join(base_path, file)
     polydata = convert_nifti_to_vtk(nifti_file)
-
+    
+    # segment volume
     segment_file = sys.argv[2]
     segment_nifti_file = os.path.join(base_path, segment_file)
     segment_polydata = convert_nifti_to_vtk(segment_nifti_file)
