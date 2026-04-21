@@ -7,6 +7,10 @@ import vtk
 import sys
 import argparse
 from dataclasses import dataclass
+from trame.app import get_server
+from trame.ui.vuetify3 import (SinglePageLayout)
+from trame.widgets import vtk as vtk_widgets
+from trame.widgets import vuetify3 as v3
 
 
 
@@ -244,8 +248,6 @@ def convert_nifti_to_vtk(nifti_file):
 
 
 
-
-
 if __name__ == "__main__":
     # main volume
     file = sys.argv[1]
@@ -282,14 +284,16 @@ if __name__ == "__main__":
     segment_mapper.SetInputConnection(segment_reader.GetOutputPort())
     segment_mapper.ScalarVisibilityOff()
 
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.GetProperty().SetColor(colors.GetColor3d("Red"))
-    actor.GetProperty().SetOpacity(1.0)
-
     segment_actor = vtk.vtkActor()
     segment_actor.SetMapper(segment_mapper)
     segment_actor.GetProperty().SetColor(colors.GetColor3d("Green"))
+
+
+    mesh = vtk.vtkActor()
+    mesh.SetMapper(mapper)
+    mesh.GetProperty().SetColor(colors.GetColor3d("Red"))
+    mesh.GetProperty().SetOpacity(1.0)
+
 
     renderer = vtk.vtkRenderer()
     render_window = vtk.vtkRenderWindow()
@@ -298,39 +302,83 @@ if __name__ == "__main__":
     render_window.SetSize(800, 800)
 
 
-    render_window_interactor = vtk.vtkRenderWindowInteractor()
-    render_window_interactor.SetRenderWindow(render_window)
-
-    renderer.AddActor(actor)
+    renderer.AddActor(mesh)
     renderer.AddActor(segment_actor)
+    renderer.ResetCamera()
     renderer.SetBackground(colors.GetColor3d("CadetBlue"))
 
-    slider_rep = vtk.vtkSliderRepresentation2D()
-    slider_rep.SetMinimumValue(0.0)
-    slider_rep.SetMaximumValue(1.0)
-    slider_rep.SetValue(1.0)
-    slider_rep.SetTitleText("Opacity")
+    server = get_server("Trame Segmentation")
+    state, ctrl = server.state, server.controller 
+    
 
-    slider_rep.GetPoint1Coordinate().SetCoordinateSystemToNormalizedDisplay()
-    slider_rep.GetPoint1Coordinate().SetValue(0.2, 0.1)
+    @state.change("opacity")
+    def update_opacity(opacity, **kwargs):
+        mesh.GetProperty().SetOpacity(opacity)
+        ctrl.view_update()
 
-    slider_rep.GetPoint2Coordinate().SetCoordinateSystemToNormalizedDisplay()
-    slider_rep.GetPoint2Coordinate().SetValue(0.8, 0.1)
+    renderer.ResetCamera()
 
-    slider_widget = vtk.vtkSliderWidget()
-    slider_widget.SetInteractor(render_window_interactor)
-    slider_widget.SetRepresentation(slider_rep)
-    slider_widget.SetAnimationModeToAnimate()
-    callback = SliderCallBackOpacity(actor)
-    slider_widget.AddObserver("InteractionEvent", callback)
-    slider_widget.EnabledOn()
+    with SinglePageLayout(server, full_height=True) as layout:
+        layout.title.set_text("Trame Visualize")
+        with layout.toolbar:
+            v3.VSpacer()
+            v3.VSlider(
+                v_model=("opacity", 1.0),
+                min=0.0,
+                max=1.0,
+                step = 0.01,
+                density="compact",
+                label="Opacity",
+                classes="position-absolute",
+                style="right: 1rem; top: 1rem; width: 400px; z-index: 1",
+            )
 
-    cam_orient_manip = vtk.vtkCameraOrientationWidget()
-    cam_orient_manip.SetParentRenderer(renderer)
+        with layout.content:
+            with v3.VContainer(fluid=True, classes="pa-0 fill-height"):
+                view = vtk_widgets.VtkLocalView(render_window, ref="view")
+                view.set_orientation_axes = True
+                ctrl.view_update = view.update 
+                ctrl.view_reset_camera = view.reset_camera
 
-    cam_orient_manip.On()
-
+        # State binding 
+       
     render_window.Render()
-    render_window_interactor.Initialize()
-    render_window_interactor.Start()
+    server.start()
 
+
+# 
+#     segment_mapper = vtk.vtkPolyDataMapper()
+#     segment_mapper.SetInputConnection(segment_reader.GetOutputPort())
+#     segment_mapper.ScalarVisibilityOff()
+# 
+# 
+#     segment_actor = vtk.vtkActor()
+#     segment_actor.SetMapper(segment_mapper)
+#     segment_actor.GetProperty().SetColor(colors.GetColor3d("Green"))
+# 
+ 
+#     slider_rep = vtk.vtkSliderRepresentation2D()
+#     slider_rep.SetMinimumValue(0.0)
+#     slider_rep.SetMaximumValue(1.0)
+#     slider_rep.SetValue(1.0)
+#     slider_rep.SetTitleText("Opacity")
+# 
+#     slider_rep.GetPoint1Coordinate().SetCoordinateSystemToNormalizedDisplay()
+#     slider_rep.GetPoint1Coordinate().SetValue(0.2, 0.1)
+# 
+#     slider_rep.GetPoint2Coordinate().SetCoordinateSystemToNormalizedDisplay()
+#     slider_rep.GetPoint2Coordinate().SetValue(0.8, 0.1)
+# 
+#     slider_widget = vtk.vtkSliderWidget()
+#     slider_widget.SetInteractor(render_window_interactor)
+#     slider_widget.SetRepresentation(slider_rep)
+#     slider_widget.SetAnimationModeToAnimate()
+#     callback = SliderCallBackOpacity(actor)
+#     slider_widget.AddObserver("InteractionEvent", callback)
+#     slider_widget.EnabledOn()
+# 
+# 
+#     render_window.Render()
+#     render_window_interactor.Initialize()
+#     render_window_interactor.Start()
+# 
