@@ -120,6 +120,8 @@ if __name__ == "__main__":
     server = get_server("Trame Segmentation")
     state, ctrl = server.state, server.controller 
 
+    state.drawer = False
+
     @state.change("opacity")
     def update_opacity(opacity, **kwargs):
         mesh.GetProperty().SetOpacity(opacity)
@@ -129,10 +131,23 @@ if __name__ == "__main__":
     renderer.ResetCamera()
 
     with VAppLayout(server, full_height=True) as layout:
+        
 
+       #v3.VNavigationDrawer(
+       #    v_model=("drawer", False),
+       #    temporary=True,
+       #    children = [
+       #        v3.VList(children=[
+       #            v3.VListItem(title="Item 1"),
+       #            v3.VListItem(title="Item 2"),
+       #        ])
+       #    ],
+       #)
 
-        with v3.VToolbar():
-            v3.VToolbarTitle("Visualizer")
+        with v3.VNavigationDrawer(v_model=("drawer", False), temporary=True, app=True, width=500):
+            with v3.VList():
+                v3.VListItem(title="Item 1")
+                v3.VListItem(title="Item 2")
             v3.VSlider(
                 v_model=("opacity", 1.0),
                 min=0.0,
@@ -142,7 +157,10 @@ if __name__ == "__main__":
                 label="Opacity",
                 classes="position-absolute",
                 style="right: 1rem; top: 1rem; width: 400px; z-index: 1",
-            ) 
+            )
+        with v3.VToolbar():
+            v3.VAppBarNavIcon(click="drawer = !drawer")
+            v3.VToolbarTitle("Visualizer")
             v3.VSpacer()
             v3.VCheckbox(density="compact", classes="mx-1", v_model=("cube_axes_visibility", True))
 
