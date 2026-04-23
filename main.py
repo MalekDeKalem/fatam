@@ -121,6 +121,7 @@ if __name__ == "__main__":
     state, ctrl = server.state, server.controller 
 
     state.drawer = False
+    state.active_ui = "mesh"
 
     @state.change("opacity")
     def update_opacity(opacity, **kwargs):
@@ -128,26 +129,27 @@ if __name__ == "__main__":
         ctrl.view_update()
 
 
-    renderer.ResetCamera()
+    def ui_card(title, ui_name):
+        with v3.VCard(v_show=f"active_ui == '{ui_name}'"):
+            v3.VCardTitle(
+                title, 
+                classes="grey lighten-1 py-1 grey--text text--darken-3",
+                style="user-select: none; cursor: pointer",
+                hide_details=True,
+                density="compact",
+            )
+            content = v3.VCardText(classes="py-2")
+        return content
 
-    with VAppLayout(server, full_height=True) as layout:
-        
+    def mesh_card():
+        with ui_card(title="Mesh", ui_name="mesh"):
+            v3.VSelect()
+            with v3.VRow(classes="pt-2", density="compact"):
+                with v3.VCol(cols="6"):
+                    v3.VSelect()
 
-       #v3.VNavigationDrawer(
-       #    v_model=("drawer", False),
-       #    temporary=True,
-       #    children = [
-       #        v3.VList(children=[
-       #            v3.VListItem(title="Item 1"),
-       #            v3.VListItem(title="Item 2"),
-       #        ])
-       #    ],
-       #)
-
-        with v3.VNavigationDrawer(v_model=("drawer", False), temporary=True, app=True, width=500):
-            with v3.VList():
-                v3.VListItem(title="Item 1")
-                v3.VListItem(title="Item 2")
+                with v3.VCol(cols="6"):
+                    v3.VSelect()
             v3.VSlider(
                 v_model=("opacity", 1.0),
                 min=0.0,
@@ -155,9 +157,19 @@ if __name__ == "__main__":
                 step = 0.01,
                 density="compact",
                 label="Opacity",
-                classes="position-absolute",
-                style="right: 1rem; top: 1rem; width: 400px; z-index: 1",
             )
+
+
+
+    renderer.ResetCamera()
+
+    with VAppLayout(server, full_height=True) as layout:
+
+        with v3.VNavigationDrawer(v_model=("drawer", False), temporary=True, app=True, width=500):
+            with v3.VList():
+                v3.VListItem(title="Item 1")
+                v3.VListItem(title="Item 2")
+                mesh_card()
         with v3.VToolbar():
             v3.VAppBarNavIcon(click="drawer = !drawer")
             v3.VToolbarTitle("Visualizer")
