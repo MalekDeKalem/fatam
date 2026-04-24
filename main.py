@@ -121,16 +121,33 @@ if __name__ == "__main__":
     state, ctrl = server.state, server.controller 
 
     state.drawer = False
+    state.color = "#FF0000"
     state.active_ui = "mesh"
+    state.show_color_picker = False
 
     @state.change("opacity")
     def update_opacity(opacity, **kwargs):
         mesh.GetProperty().SetOpacity(opacity)
         ctrl.view_update()
 
+    @state.change("segment_opacity")
+    def update_segment_opacity(segment_opacity, **kwargs):
+        segment_actor.GetProperty().SetOpacity(segment_opacity)
+        ctrl.view_update()
+
+    @state.change("color")
+    def update_color(color, **kwargs):
+        hex = color.lstrip("#")
+        r = int(hex[0:2], 16) / 255.0
+        g = int(hex[2:4], 16) / 255.0
+        b = int(hex[4:6], 16) / 255.0
+        print(r, g, b)
+        mesh.GetProperty().SetColor(r, g, b)
+        ctrl.view_update()
+
 
     def ui_card(title, ui_name):
-        with v3.VCard(v_show=f"active_ui == '{ui_name}'"):
+        with v3.VCard():
             v3.VCardTitle(
                 title, 
                 classes="grey lighten-1 py-1 grey--text text--darken-3",
@@ -143,13 +160,22 @@ if __name__ == "__main__":
 
     def mesh_card():
         with ui_card(title="Mesh", ui_name="mesh"):
-            v3.VSelect()
             with v3.VRow(classes="pt-2", density="compact"):
-                with v3.VCol(cols="6"):
-                    v3.VSelect()
+                with v3.VMenu(
+                    v_model=("show_color_picker", False),
+                    close_on_content_click = False,
+                    location = "bottom"
+                ):
+                    with v3.Template(v_slot_activator="{ props }"):
+                        v3.VBtn("Pick Color", v_bind="props", density="compact", style="height: 50px;")
 
-                with v3.VCol(cols="6"):
-                    v3.VSelect()
+                    v3.VColorPicker(
+                        v_model=("color", "#FF0000"),
+                        mode="hexa",
+                        flat=True,
+                    )
+
+            v3.VDivider(vertical=True, classes="mx-2")
             v3.VSlider(
                 v_model=("opacity", 1.0),
                 min=0.0,
@@ -159,6 +185,20 @@ if __name__ == "__main__":
                 label="Opacity",
             )
 
+    def segment_card():
+        with ui_card(title="Segment", ui_name="mesh"):
+            v3.VDivider(vertical=True, classes="mx-2")
+            v3.VSlider(
+                v_model=("segment_opacity", 1.0),
+                min=0.0,
+                max=1.0,
+                step = 0.01,
+                density="compact",
+                label="Opacity",
+            )
+
+
+
 
 
     renderer.ResetCamera()
@@ -166,10 +206,8 @@ if __name__ == "__main__":
     with VAppLayout(server, full_height=True) as layout:
 
         with v3.VNavigationDrawer(v_model=("drawer", False), temporary=True, app=True, width=500):
-            with v3.VList():
-                v3.VListItem(title="Item 1")
-                v3.VListItem(title="Item 2")
-                mesh_card()
+            mesh_card()
+            segment_card()
         with v3.VToolbar():
             v3.VAppBarNavIcon(click="drawer = !drawer")
             v3.VToolbarTitle("Visualizer")
