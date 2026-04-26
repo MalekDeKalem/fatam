@@ -1,4 +1,6 @@
 import nibabel as nib
+import tkinter as tk 
+from tkinter import filedialog
 import os 
 import matplotlib
 matplotlib.use("Agg")
@@ -121,9 +123,11 @@ if __name__ == "__main__":
     state, ctrl = server.state, server.controller 
 
     state.drawer = False
-    state.color = "#FF0000"
+    state.mesh_color = "#FF0000"
+    state.segment_color = "#00FF00"
     state.active_ui = "mesh"
-    state.show_color_picker = False
+    state.show_color_picker_mesh = False
+    state.show_color_picker_segment = False
 
     @state.change("opacity")
     def update_opacity(opacity, **kwargs):
@@ -135,15 +139,26 @@ if __name__ == "__main__":
         segment_actor.GetProperty().SetOpacity(segment_opacity)
         ctrl.view_update()
 
-    @state.change("color")
-    def update_color(color, **kwargs):
-        hex = color.lstrip("#")
+    @state.change("mesh_color")
+    def update_color_mesh(mesh_color, **kwargs):
+        hex = mesh_color.lstrip("#")
         r = int(hex[0:2], 16) / 255.0
         g = int(hex[2:4], 16) / 255.0
         b = int(hex[4:6], 16) / 255.0
         print(r, g, b)
         mesh.GetProperty().SetColor(r, g, b)
         ctrl.view_update()
+
+    @state.change("segment_color")
+    def update_color_segment(segment_color, **kwargs):
+        hex = segment_color.lstrip("#")
+        r = int(hex[0:2], 16) / 255.0
+        g = int(hex[2:4], 16) / 255.0
+        b = int(hex[4:6], 16) / 255.0
+        print(r, g, b)
+        segment_actor.GetProperty().SetColor(r, g, b)
+        ctrl.view_update()
+
 
 
     def ui_card(title, ui_name):
@@ -162,7 +177,7 @@ if __name__ == "__main__":
         with ui_card(title="Mesh", ui_name="mesh"):
             with v3.VRow(classes="pt-2", density="compact"):
                 with v3.VMenu(
-                    v_model=("show_color_picker", False),
+                    v_model=("show_color_picker_mesh", False),
                     close_on_content_click = False,
                     location = "bottom"
                 ):
@@ -170,7 +185,7 @@ if __name__ == "__main__":
                         v3.VBtn("Pick Color", v_bind="props", density="compact", style="height: 50px;")
 
                     v3.VColorPicker(
-                        v_model=("color", "#FF0000"),
+                        v_model=("mesh_color", "#FF0000"),
                         mode="hexa",
                         flat=True,
                     )
@@ -186,7 +201,23 @@ if __name__ == "__main__":
             )
 
     def segment_card():
-        with ui_card(title="Segment", ui_name="mesh"):
+        with ui_card(title="Segment", ui_name="segment"):
+            with v3.VRow(classes="pt-2", density="compact"):
+                with v3.VMenu(
+                    v_model=("show_color_picker_segment", False),
+                    close_on_content_click = False,
+                    location = "bottom"
+                ):
+                    with v3.Template(v_slot_activator="{ props }"):
+                        v3.VBtn("Pick Color", v_bind="props", density="compact", style="height: 50px;")
+
+                    v3.VColorPicker(
+                        v_model=("segment_color", "#00FF00"),
+                        mode="hexa",
+                        flat=True,
+                    )
+
+
             v3.VDivider(vertical=True, classes="mx-2")
             v3.VSlider(
                 v_model=("segment_opacity", 1.0),
