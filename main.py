@@ -1,6 +1,6 @@
 import nibabel as nib
-import tkinter as tk 
-from tkinter import filedialog as fd
+import base64 as b64 
+import tempfile
 import os 
 import matplotlib
 matplotlib.use("Agg")
@@ -128,7 +128,47 @@ if __name__ == "__main__":
     state.active_ui = "mesh"
     state.show_color_picker_mesh = False
     state.show_color_picker_segment = False
-    state.show_mesh_dialog = False
+
+    def update_mesh_file(**kwargs):
+
+        if not state.mesh_file:
+            print("No file selected")
+            return 
+
+        name = state.mesh_file.get("name")
+        content = state.mesh_file.get("content")
+
+        
+        #with tempfile.NamedTemporaryFile(delete=False, suffix=".nii.gz") as tmp:
+        #    tmp.write(b64.b64decode(content))
+        #    nifti_file = tmp.name
+        #
+        #
+
+
+        
+        base_name = os.path.splitext(name)[0]
+        rel_path = os.path.join("./CIA/BraTS-Africa/", name)
+        nifti_file = rel_path
+        polydata = convert_nifti_to_vtk(nifti_file)
+
+        writer.SetFileName(f"./vtp/{base_name}.vtp")
+        writer.SetInputData(polydata)
+        writer.Write() 
+
+        reader.SetFileName(f"./vtp/{base_name}.vtp")
+        reader.Modified()
+        reader.Update()
+   
+        mapper.SetInputConnection(reader.GetOutputPort())
+        mapper.ScalarVisibilityOff()
+        mapper.Update()
+        mesh.SetMapper(mapper)
+        print("Passed: ", name)
+        ctrl.view_update()
+
+    state.change("mesh_file")(update_mesh_file)
+
 
     @state.change("opacity")
     def update_opacity(opacity, **kwargs):
@@ -160,8 +200,6 @@ if __name__ == "__main__":
         segment_actor.GetProperty().SetColor(r, g, b)
         ctrl.view_update()
 
-
-
     def ui_card(title, ui_name):
         with v3.VCard():
             v3.VCardTitle(
@@ -191,14 +229,17 @@ if __name__ == "__main__":
                         flat=True,
                     )
 
-                with v3.VMenu(
-                    v_model=("show_mesh_dialog", False),
-                    close_on_content_click = False,
-                ):
-                    with v3.Template(v_slot_activator="{ props }"):
-                        v3.VBtn("Open File", v_bind="props", density="compact", style="height: 50px;")
+                v3.VSpacer()
 
-        
+                v3.VFileInput(
+                    label="Select NIFTI",
+                    v_model=("mesh_file", None),
+                    show_size=True,
+                    truncate_length=30,
+                    accept=".nii,.nii.gz",
+                    dense=True,
+                    chips=True,
+                )
 
             v3.VDivider(vertical=True, classes="mx-2")
             v3.VSlider(
@@ -237,10 +278,6 @@ if __name__ == "__main__":
                 density="compact",
                 label="Opacity",
             )
-
-
-
-
 
     renderer.ResetCamera()
 
