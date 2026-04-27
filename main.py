@@ -1,6 +1,6 @@
 import nibabel as nib
 import tkinter as tk 
-from tkinter import filedialog
+from tkinter import filedialog as fd
 import os 
 import matplotlib
 matplotlib.use("Agg")
@@ -128,6 +128,7 @@ if __name__ == "__main__":
     state.active_ui = "mesh"
     state.show_color_picker_mesh = False
     state.show_color_picker_segment = False
+    state.show_mesh_dialog = False
 
     @state.change("opacity")
     def update_opacity(opacity, **kwargs):
@@ -189,6 +190,15 @@ if __name__ == "__main__":
                         mode="hexa",
                         flat=True,
                     )
+
+                with v3.VMenu(
+                    v_model=("show_mesh_dialog", False),
+                    close_on_content_click = False,
+                ):
+                    with v3.Template(v_slot_activator="{ props }"):
+                        v3.VBtn("Open File", v_bind="props", density="compact", style="height: 50px;")
+
+        
 
             v3.VDivider(vertical=True, classes="mx-2")
             v3.VSlider(
