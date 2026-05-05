@@ -138,15 +138,7 @@ if __name__ == "__main__":
         name = state.mesh_file.get("name")
         content = state.mesh_file.get("content")
 
-        
-        #with tempfile.NamedTemporaryFile(delete=False, suffix=".nii.gz") as tmp:
-        #    tmp.write(b64.b64decode(content))
-        #    nifti_file = tmp.name
-        #
-        #
 
-
-        
         base_name = os.path.splitext(name)[0]
         rel_path = os.path.join("./CIA/BraTS-Africa/", name)
         nifti_file = rel_path
@@ -167,7 +159,38 @@ if __name__ == "__main__":
         print("Passed: ", name)
         ctrl.view_update()
 
+    def update_segment_file(**kwargs):
+
+        if not state.segment_file:
+            print("No segment selected")
+            return
+        
+        name = state.segment_file.get("name")
+        content = state.segment_file.get("content")
+
+        base_name = os.path.splitext(name)[0]
+        rel_path = os.path.join("./CIA/BraTS-Africa/", name)
+        segment_nifti_file = rel_path
+        segment_polydata = convert_nifti_to_vtk(nifti_file)
+
+        segment_writer.SetFileName(f"./vtp/{base_name}.vtp")
+        segment_writer.SetInputData(segment_polydata)
+        segment_writer.Write()
+
+        segment_reader.SetFileName(f"./vtp/{base_name}.vtp")
+        segment_reader.Modified()
+        segment_reader.Update()
+
+        segment_mapper.SetInputConnection(segment_reader.GetOutputPort())
+        segment_mapper.ScalarVisibilityOff()
+        segment_mapper.Update()
+        segment_actor.SetMapper(segment_mapper)
+        print("Passed: ", name)
+        ctrl.view_update()
+
+    
     state.change("mesh_file")(update_mesh_file)
+    state.change("segment_file")(update_segment_file)
 
 
     @state.change("opacity")
@@ -267,6 +290,18 @@ if __name__ == "__main__":
                         mode="hexa",
                         flat=True,
                     )
+
+                v3.VSpacer()
+
+                v3.VFileInput(
+                    label="Select NIFTI",
+                    v_model=("segment_file", None),
+                    show_size=True,
+                    truncate_length=30,
+                    accept=".nii,.nii.gz",
+                    dense=True,
+                    chips=True,
+                )
 
 
             v3.VDivider(vertical=True, classes="mx-2")
