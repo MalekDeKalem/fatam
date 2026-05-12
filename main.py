@@ -40,6 +40,24 @@ def extract_time_component(image, t):
     extract.Update()
     return extract.GetOutput()
 
+def convert_dicom_to_vtk(dicom_file):
+    reader = vtk.vtkDICOMImageReader()
+    reader.SetFileName(dicom_file)
+    reader.Update()
+    image = reader.GetOutputPort()
+
+    polydata = vtk.vtkPolyData()
+    mc = vtk.vtkMarchingCubes()
+    mc.SetInputConnection(image)
+    mc.SetValue(0, 300)
+    mc.Update()
+    
+    polydata.ShallowCopy(mc.GetOutput())
+    return polydata
+
+
+
+
 def convert_nifti_to_vtk(nifti_file):
     reader = vtk.vtkNIFTIImageReader()
     reader.SetFileName(nifti_file)
