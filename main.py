@@ -49,7 +49,7 @@ def convert_dicom_to_vtk(dicom_file):
     polydata = vtk.vtkPolyData()
     mc = vtk.vtkMarchingCubes()
     mc.SetInputConnection(image)
-    mc.SetValue(0, 300)
+    mc.SetValue(0, 1)
     mc.Update()
     
     polydata.ShallowCopy(mc.GetOutput())
@@ -70,7 +70,7 @@ def convert_nifti_to_vtk(nifti_file):
 
     mc = vtk.vtkMarchingCubes()
     mc.SetInputData(image)
-    mc.SetValue(0, 0.5)
+    mc.SetValue(0, 1)
     mc.Update()
 
     polydata.ShallowCopy(mc.GetOutput())
@@ -189,7 +189,7 @@ if __name__ == "__main__":
         base_name = os.path.splitext(name)[0]
         rel_path = os.path.join("./CIA/BraTS-Africa/", name)
         segment_nifti_file = rel_path
-        segment_polydata = convert_nifti_to_vtk(nifti_file)
+        segment_polydata = convert_nifti_to_vtk(segment_nifti_file)
 
         segment_writer.SetFileName(f"./vtp/{base_name}.vtp")
         segment_writer.SetInputData(segment_polydata)
