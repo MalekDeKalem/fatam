@@ -41,19 +41,19 @@ def extract_time_component(image, t):
     return extract.GetOutput()
 
 def convert_dicom_to_vtk(dicom_file):
+    volume = vtk.vtkImageData()
     reader = vtk.vtkDICOMImageReader()
-    reader.SetFileName(dicom_file)
+    reader.SetDirectoryName(dicom_file)
     reader.Update()
-    image = reader.GetOutputPort()
 
-    polydata = vtk.vtkPolyData()
-    mc = vtk.vtkMarchingCubes()
-    mc.SetInputConnection(image)
-    mc.SetValue(0, 1)
-    mc.Update()
+    volume.DeepCopy(reader.GetOutput())
     
-    polydata.ShallowCopy(mc.GetOutput())
-    return polydata
+    surface = vtk.vtkFlyingEdges3D()
+    surface.SetInputData(volume)
+    surface.SetValue(0, 1)
+
+    return volume
+   
 
 
 
