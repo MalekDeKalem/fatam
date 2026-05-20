@@ -62,8 +62,8 @@ def convert_nifti_to_vtk(nifti_file):
     reader.SetFileName(nifti_file)
     reader.Update()
     image = reader.GetOutput()
-
-    print(reader)
+ 
+    print(image)
 
     polydata = vtk.vtkPolyData()
 
@@ -75,15 +75,19 @@ def convert_nifti_to_vtk(nifti_file):
     polydata.ShallowCopy(mc.GetOutput())
     return polydata
 
+def generate_actor(filename):
+    polydata = convert_nifti_to_vtk(filename)
+    writer = vtk.vtkPolyDataWriter()
+    writer.SetFileName("")
+
+
 
 
 if __name__ == "__main__":
-    # main volume
     file = sys.argv[1]
     nifti_file = os.path.join(base_path, file)
     polydata = convert_nifti_to_vtk(nifti_file)
-    
-    # segment volume
+
     segment_file = sys.argv[2]
     segment_nifti_file = os.path.join(base_path, segment_file)
     segment_polydata = convert_nifti_to_vtk(segment_nifti_file)
@@ -155,16 +159,17 @@ if __name__ == "__main__":
         name = state.mesh_file.get("name")
         content = state.mesh_file.get("content")
 
+        upload_path = os.path.join("./uploads", name)
+        print(upload_path)
+        with open (upload_path, "wb") as f:
+            f.write(content)
+
+        #if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii":
+        polydata = convert_nifti_to_vtk(upload_path)
+        #else:
+        #    polydata = convert_dicom_to_vtk(upload_path)
 
         base_name = os.path.splitext(name)[0]
-        rel_path = os.path.join("./CIA/BraTS-Africa/", name)
-        nifti_file = rel_path
-
-        if pathlib.Path(rel_path).suffix == ".nii.gz" or pathlib.Path(rel_path).suffix == ".nii":
-            polydata = convert_nifti_to_vtk(nifti_file)
-        else:
-            polydata = convert_dicom_to_vtk(nifti_file)
-
 
         writer.SetFileName(f"./vtp/{base_name}.vtp")
         writer.SetInputData(polydata)
@@ -189,16 +194,17 @@ if __name__ == "__main__":
         
         name = state.segment_file.get("name")
         content = state.segment_file.get("content")
+        upload_path = os.path.join("./uploads", name)
+        print(upload_path)
+        with open (upload_path, "wb") as f:
+            f.write(content)
+
+        #if pathlib.Path(rel_path).suffix == ".nii.gz" or pathlib.Path(rel_path).suffix == ".nii":
+        segment_polydata = convert_nifti_to_vtk(upload_path)
+        #else:
+        #    segment_polydata = convert_dicom_to_vtk(segment_nifti_file)
 
         base_name = os.path.splitext(name)[0]
-
-        rel_path = os.path.join("./CIA/BraTS-Africa/", name)
-        segment_nifti_file = rel_path
-        if pathlib.Path(rel_path).suffix == ".nii.gz" or pathlib.Path(rel_path).suffix == ".nii":
-            segment_polydata = convert_nifti_to_vtk(segment_nifti_file)
-        else:
-            segment_polydata = convert_dicom_to_vtk(segment_nifti_file)
-
         segment_writer.SetFileName(f"./vtp/{base_name}.vtp")
         segment_writer.SetInputData(segment_polydata)
         segment_writer.Write()
