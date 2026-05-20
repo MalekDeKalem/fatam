@@ -2,6 +2,7 @@ import nibabel as nib
 import base64 as b64 
 import tempfile
 import os 
+import pathlib
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pylab as plt
@@ -14,6 +15,7 @@ from trame.ui.vuetify3 import (SinglePageLayout, VAppLayout)
 from trame.widgets import vtk as vtk_widgets
 from trame.widgets import vuetify3 as v3
 from trame.widgets import html
+
 
 
 
@@ -54,9 +56,6 @@ def convert_dicom_to_vtk(dicom_file):
 
     return volume
    
-
-
-
 
 def convert_nifti_to_vtk(nifti_file):
     reader = vtk.vtkNIFTIImageReader()
@@ -160,7 +159,12 @@ if __name__ == "__main__":
         base_name = os.path.splitext(name)[0]
         rel_path = os.path.join("./CIA/BraTS-Africa/", name)
         nifti_file = rel_path
-        polydata = convert_nifti_to_vtk(nifti_file)
+
+        if pathlib.Path(rel_path).suffix == ".nii.gz" or pathlib.Path(rel_path).suffix == ".nii":
+            polydata = convert_nifti_to_vtk(nifti_file)
+        else:
+            polydata = convert_dicom_to_vtk(nifti_file)
+
 
         writer.SetFileName(f"./vtp/{base_name}.vtp")
         writer.SetInputData(polydata)
@@ -187,9 +191,13 @@ if __name__ == "__main__":
         content = state.segment_file.get("content")
 
         base_name = os.path.splitext(name)[0]
+
         rel_path = os.path.join("./CIA/BraTS-Africa/", name)
         segment_nifti_file = rel_path
-        segment_polydata = convert_nifti_to_vtk(segment_nifti_file)
+        if pathlib.Path(rel_path).suffix == ".nii.gz" or pathlib.Path(rel_path).suffix == ".nii":
+            segment_polydata = convert_nifti_to_vtk(segment_nifti_file)
+        else:
+            segment_polydata = convert_dicom_to_vtk(segment_nifti_file)
 
         segment_writer.SetFileName(f"./vtp/{base_name}.vtp")
         segment_writer.SetInputData(segment_polydata)
