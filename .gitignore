@@ -9,3 +9,4 @@ CIA
 .venv
 vtp/*
 uploads/*
+dicomseries/*
