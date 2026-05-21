@@ -42,10 +42,11 @@ def extract_time_component(image, t):
     extract.Update()
     return extract.GetOutput()
 
-def convert_dicom_to_vtk(dicom_file):
+def convert_dicom_to_vtk():
     volume = vtk.vtkImageData()
+    polydata = vtk.vtkPolyData()
     reader = vtk.vtkDICOMImageReader()
-    reader.SetDirectoryName(dicom_file)
+    reader.SetDirectoryName("./dicomseries/")
     reader.Update()
 
     volume.DeepCopy(reader.GetOutput())
@@ -53,8 +54,11 @@ def convert_dicom_to_vtk(dicom_file):
     surface = vtk.vtkFlyingEdges3D()
     surface.SetInputData(volume)
     surface.SetValue(0, 1)
-
-    return volume
+    surface.SetComputeNormalsOn()
+    surface.Update()
+    polydata.ShallowCopy(surface.GetOutput())
+    return polydata
+    
    
 
 def convert_nifti_to_vtk(nifti_file):
@@ -164,10 +168,10 @@ if __name__ == "__main__":
         with open (upload_path, "wb") as f:
             f.write(content)
 
-        #if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii":
-        polydata = convert_nifti_to_vtk(upload_path)
-        #else:
-        #    polydata = convert_dicom_to_vtk(upload_path)
+        if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii":
+            polydata = convert_nifti_to_vtk(upload_path)
+        else:
+            polydata = convert_dicom_to_vtk()
 
         base_name = os.path.splitext(name)[0]
 
@@ -199,10 +203,10 @@ if __name__ == "__main__":
         with open (upload_path, "wb") as f:
             f.write(content)
 
-        #if pathlib.Path(rel_path).suffix == ".nii.gz" or pathlib.Path(rel_path).suffix == ".nii":
-        segment_polydata = convert_nifti_to_vtk(upload_path)
-        #else:
-        #    segment_polydata = convert_dicom_to_vtk(segment_nifti_file)
+        if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii":
+            segment_polydata = convert_nifti_to_vtk(upload_path)
+        else:
+            segment_polydata = convert_dicom_to_vtk()
 
         base_name = os.path.splitext(name)[0]
         segment_writer.SetFileName(f"./vtp/{base_name}.vtp")
