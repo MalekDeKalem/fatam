@@ -54,7 +54,7 @@ def convert_dicom_to_vtk():
     surface = vtk.vtkFlyingEdges3D()
     surface.SetInputData(volume)
     surface.SetValue(0, 1)
-    surface.SetComputeNormalsOn()
+    surface.SetComputeNormals(1)
     surface.Update()
     polydata.ShallowCopy(surface.GetOutput())
     return polydata
