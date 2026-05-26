@@ -38,7 +38,7 @@ def create_images(path, output_name):
 def extract_time_component(image, t):
     extract = vtk.vtkImageExtractComponents()
     extract.SetInputData(image)
-    extract.SetComponents(t)
+    time_steps = vtk.GetTimeDimension()
     extract.Update()
     return extract.GetOutput()
 
