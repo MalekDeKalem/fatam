@@ -1,6 +1,4 @@
 import nibabel as nib
-import base64 as b64 
-import tempfile
 import os 
 import pathlib
 import matplotlib
@@ -8,8 +6,6 @@ matplotlib.use("Agg")
 import matplotlib.pylab as plt
 import vtk
 import sys
-import argparse
-from dataclasses import dataclass
 from trame.app import get_server
 from trame.ui.vuetify3 import (SinglePageLayout, VAppLayout)
 from trame.widgets import vtk as vtk_widgets
@@ -39,6 +35,7 @@ def extract_time_component(image, t):
     extract = vtk.vtkImageExtractComponents()
     extract.SetInputData(image)
     time_steps = vtk.GetTimeDimension()
+    print(f"Time Steps from image: {time_steps}")
     extract.Update()
     return extract.GetOutput()
 
@@ -368,7 +365,6 @@ if __name__ == "__main__":
             ctrl.view_update = view.update 
             ctrl.view_reset_camera = view.reset_camera
 
-        # State binding 
        
     render_window.Render()
     server.start()
