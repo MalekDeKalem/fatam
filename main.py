@@ -155,7 +155,7 @@ if __name__ == "__main__":
     state.active_ui = "mesh"
     state.show_color_picker_mesh = False
     state.show_color_picker_segment = False
-    state_time_steps = 0
+    state.time_index = 0
 
     def update_mesh_file(**kwargs):
 
@@ -172,7 +172,7 @@ if __name__ == "__main__":
             f.write(content)
 
         if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii" or pathlib.Path(upload_path).suffix == ".gz":
-            polydata = convert_nifti_to_vtk(upload_path, extractor)
+            polydata = convert_nifti_to_vtk(upload_path, extractor, state.time_index)
         else:
             polydata = convert_dicom_to_vtk()
 
@@ -193,7 +193,7 @@ if __name__ == "__main__":
         mapper.Update()
         mesh.SetMapper(mapper)
         print("Passed: ", name)
-        state.time_steps = extractor.time_steps 
+        state.time_steps = extractor.time_steps - 1
         state.flush()
         ctrl.view_update()
 
@@ -234,6 +234,7 @@ if __name__ == "__main__":
     
     state.change("mesh_file")(update_mesh_file)
     state.change("segment_file")(update_segment_file)
+    state.change("time_index")(update_mesh_file)
 
 
     @state.change("opacity")
@@ -371,7 +372,7 @@ if __name__ == "__main__":
             with v3.VContainer(v_if="time_steps > 0", style="display: flex; justify-content: center"):
                 with v3.VContainer(v_if="time_steps > 0", style="max-width: 500px"):
                     v3.VSlider(
-                        key=("time_steps"),
+                        key=("time_index"),
                         v_model_lazy=("time_index", 0),
                         min=0,
                         max=("time_steps", 0),
