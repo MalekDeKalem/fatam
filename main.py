@@ -53,9 +53,11 @@ def convert_dicom_to_vtk():
     return polydata
     
 
-def convert_nifti_to_vtk(nifti_file, time_index=0):
+def convert_nifti_to_vtk(nifti_file, extractor: Extractor, time_index=0):
     nii = nib.load(nifti_file)
+    print("Shape of data", nii.shape)
     dimensionality = len(nii.shape)
+    extractor.extract_time_component(nii)
     data = nii.get_fdata()
     if (dimensionality == 4):
         volume = data[:, :, :, time_index]
@@ -83,20 +85,16 @@ def convert_nifti_to_vtk(nifti_file, time_index=0):
     polydata.ShallowCopy(mc.GetOutput())
     return polydata
 
-def generate_actor(filename):
-    polydata = convert_nifti_to_vtk(filename)
-    writer = vtk.vtkPolyDataWriter()
-    writer.SetFileName("")
-
 
 if __name__ == "__main__":
     file = sys.argv[1]
     nifti_file = os.path.join(base_path, file)
-    polydata = convert_nifti_to_vtk(nifti_file)
+    extractor = Extractor()
+    polydata = convert_nifti_to_vtk(nifti_file, extractor)
 
     segment_file = sys.argv[2]
     segment_nifti_file = os.path.join(base_path, segment_file)
-    segment_polydata = convert_nifti_to_vtk(segment_nifti_file)
+    segment_polydata = convert_nifti_to_vtk(segment_nifti_file, extractor)
 
     writer = vtk.vtkPolyDataWriter()
     writer.SetFileName("data.vtp")
@@ -147,7 +145,6 @@ if __name__ == "__main__":
     renderer.SetBackground(colors.GetColor3d("CadetBlue"))
 
 
-    extractor = Extractor()
 
     server = get_server("Trame Segmentation")
     state, ctrl = server.state, server.controller 
@@ -158,6 +155,7 @@ if __name__ == "__main__":
     state.active_ui = "mesh"
     state.show_color_picker_mesh = False
     state.show_color_picker_segment = False
+    state_time_steps = 0
 
     def update_mesh_file(**kwargs):
 
@@ -174,9 +172,11 @@ if __name__ == "__main__":
             f.write(content)
 
         if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii" or pathlib.Path(upload_path).suffix == ".gz":
-            polydata = convert_nifti_to_vtk(upload_path)
+            polydata = convert_nifti_to_vtk(upload_path, extractor)
         else:
             polydata = convert_dicom_to_vtk()
+
+        print("Extractor max time steps: ", extractor.time_steps)
 
         base_name = os.path.splitext(name)[0]
 
@@ -193,6 +193,8 @@ if __name__ == "__main__":
         mapper.Update()
         mesh.SetMapper(mapper)
         print("Passed: ", name)
+        state.time_steps = extractor.time_steps 
+        state.flush()
         ctrl.view_update()
 
     def update_segment_file(**kwargs):
@@ -209,7 +211,7 @@ if __name__ == "__main__":
             f.write(content)
 
         if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii":
-            segment_polydata = convert_nifti_to_vtk(upload_path)
+            segment_polydata = convert_nifti_to_vtk(upload_path, extractor)
         else:
             segment_polydata = convert_dicom_to_vtk()
 
@@ -366,15 +368,16 @@ if __name__ == "__main__":
             v3.VAppBarNavIcon(click="drawer = !drawer")
             v3.VToolbarTitle("Visualizer")
             v3.VSpacer()
-            v3.VCheckbox(density="compact", classes="mx-1", v_model=("cube_axes_visibility", True))
-            if True:
-                v3.VSlider(
-                    v_model_lazy=("time_step", 1.0),
-                    min=0.0,
-                    max=11.0,
-                    step = 1.0,
-                    density="compact",
-                )
+            with v3.VContainer(v_if="time_steps > 0", style="display: flex; justify-content: center"):
+                with v3.VContainer(v_if="time_steps > 0", style="max-width: 500px"):
+                    v3.VSlider(
+                        key=("time_steps"),
+                        v_model_lazy=("time_index", 0),
+                        min=0,
+                        max=("time_steps", 0),
+                        step = 1,
+                        density="compact",
+                    )
         with v3.VContainer(fluid=True, classes="pa-0 fill-height"):
             view = vtk_widgets.VtkLocalView(render_window, ref="view")
             ctrl.view_update = view.update 
