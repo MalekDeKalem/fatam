@@ -1,4 +1,5 @@
 import nibabel as nib
+import numpy as np
 import os 
 import pathlib
 import matplotlib
@@ -11,6 +12,9 @@ from trame.ui.vuetify3 import (SinglePageLayout, VAppLayout)
 from trame.widgets import vtk as vtk_widgets
 from trame.widgets import vuetify3 as v3
 from trame.widgets import html
+from vtk.util.numpy_support import numpy_to_vtk
+
+from extractor import Extractor
 
 
 
@@ -31,14 +35,6 @@ def create_images(path, output_name):
     plt.savefig(output_name + ".png" , dpi=200)
     plt.close()
 
-def extract_time_component(image, t):
-    extract = vtk.vtkImageExtractComponents()
-    extract.SetInputData(image)
-    time_steps = vtk.GetTimeDimension()
-    print(f"Time Steps from image: {time_steps}")
-    extract.Update()
-    return extract.GetOutput()
-
 def convert_dicom_to_vtk():
     volume = vtk.vtkImageData()
     polydata = vtk.vtkPolyData()
@@ -56,23 +52,34 @@ def convert_dicom_to_vtk():
     polydata.ShallowCopy(surface.GetOutput())
     return polydata
     
-   
 
-def convert_nifti_to_vtk(nifti_file):
-    reader = vtk.vtkNIFTIImageReader()
-    reader.SetFileName(nifti_file)
-    reader.Update()
-    image = reader.GetOutput()
- 
-    print(image)
+def convert_nifti_to_vtk(nifti_file, time_index=0):
+    nii = nib.load(nifti_file)
+    dimensionality = len(nii.shape)
+    data = nii.get_fdata()
+    if (dimensionality == 4):
+        volume = data[:, :, :, time_index]
+    else:
+        volume = data[:, :, :]
+    volume = np.nan_to_num(volume)
+    vtk_image = vtk.vtkImageData()
 
-    polydata = vtk.vtkPolyData()
+    depth_array = numpy_to_vtk(
+        num_array=volume.ravel(order='F'),
+        deep=True,
+        array_type=vtk.VTK_FLOAT
+    )
+
+    vtk_image.SetDimensions(volume.shape)
+    vtk_image.GetPointData().SetScalars(depth_array)
+
 
     mc = vtk.vtkMarchingCubes()
-    mc.SetInputData(image)
-    mc.SetValue(0, 1)
+    mc.SetInputData(vtk_image)
+    mc.SetValue(0, 0.1)
     mc.Update()
 
+    polydata = vtk.vtkPolyData()
     polydata.ShallowCopy(mc.GetOutput())
     return polydata
 
@@ -80,8 +87,6 @@ def generate_actor(filename):
     polydata = convert_nifti_to_vtk(filename)
     writer = vtk.vtkPolyDataWriter()
     writer.SetFileName("")
-
-
 
 
 if __name__ == "__main__":
@@ -141,6 +146,9 @@ if __name__ == "__main__":
     renderer.ResetCamera()
     renderer.SetBackground(colors.GetColor3d("CadetBlue"))
 
+
+    extractor = Extractor()
+
     server = get_server("Trame Segmentation")
     state, ctrl = server.state, server.controller 
 
@@ -165,7 +173,7 @@ if __name__ == "__main__":
         with open (upload_path, "wb") as f:
             f.write(content)
 
-        if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii":
+        if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii" or pathlib.Path(upload_path).suffix == ".gz":
             polydata = convert_nifti_to_vtk(upload_path)
         else:
             polydata = convert_dicom_to_vtk()
@@ -359,7 +367,14 @@ if __name__ == "__main__":
             v3.VToolbarTitle("Visualizer")
             v3.VSpacer()
             v3.VCheckbox(density="compact", classes="mx-1", v_model=("cube_axes_visibility", True))
-
+            if True:
+                v3.VSlider(
+                    v_model_lazy=("time_step", 1.0),
+                    min=0.0,
+                    max=11.0,
+                    step = 1.0,
+                    density="compact",
+                )
         with v3.VContainer(fluid=True, classes="pa-0 fill-height"):
             view = vtk_widgets.VtkLocalView(render_window, ref="view")
             ctrl.view_update = view.update 

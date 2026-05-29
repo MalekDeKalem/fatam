@@ -10,3 +10,4 @@ CIA
 vtp/*
 uploads/*
 dicomseries/*
+*.vtp
