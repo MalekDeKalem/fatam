@@ -156,6 +156,7 @@ if __name__ == "__main__":
     state.show_color_picker_mesh = False
     state.show_color_picker_segment = False
     state.time_index = 0
+    state.slider_time_index = 0
 
     def update_mesh_file(**kwargs):
 
@@ -172,11 +173,10 @@ if __name__ == "__main__":
             f.write(content)
 
         if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii" or pathlib.Path(upload_path).suffix == ".gz":
-            polydata = convert_nifti_to_vtk(upload_path, extractor, state.time_index)
+            polydata = convert_nifti_to_vtk(upload_path, extractor)
         else:
             polydata = convert_dicom_to_vtk()
 
-        print("Extractor max time steps: ", extractor.time_steps)
 
         base_name = os.path.splitext(name)[0]
 
@@ -193,7 +193,6 @@ if __name__ == "__main__":
         mapper.Update()
         mesh.SetMapper(mapper)
         print("Passed: ", name)
-        state.time_steps = extractor.time_steps - 1
         state.flush()
         ctrl.view_update()
 
@@ -210,8 +209,8 @@ if __name__ == "__main__":
         with open (upload_path, "wb") as f:
             f.write(content)
 
-        if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii":
-            segment_polydata = convert_nifti_to_vtk(upload_path, extractor)
+        if pathlib.Path(upload_path).suffix == ".nii.gz" or pathlib.Path(upload_path).suffix == ".nii" or pathlib.Path(upload_path).suffix == ".gz":
+            segment_polydata = convert_nifti_to_vtk(upload_path, extractor, state.time_index)
         else:
             segment_polydata = convert_dicom_to_vtk()
 
@@ -224,17 +223,20 @@ if __name__ == "__main__":
         segment_reader.Modified()
         segment_reader.Update()
 
+        print("Extractor max time steps: ", extractor.time_steps)
         segment_mapper.SetInputConnection(segment_reader.GetOutputPort())
         segment_mapper.ScalarVisibilityOff()
         segment_mapper.Update()
         segment_actor.SetMapper(segment_mapper)
         print("Passed: ", name)
+        state.time_steps = extractor.time_steps - 1
+        state.flush()
         ctrl.view_update()
 
     
     state.change("mesh_file")(update_mesh_file)
     state.change("segment_file")(update_segment_file)
-    state.change("time_index")(update_mesh_file)
+    state.change("time_index")(update_segment_file)
 
 
     @state.change("opacity")
@@ -365,19 +367,21 @@ if __name__ == "__main__":
         with v3.VNavigationDrawer(v_model=("drawer", False), temporary=True, app=True, width=500):
             mesh_card()
             segment_card()
-        with v3.VToolbar():
+        with v3.VToolbar(style="display: flex; justify-content: center; overflow: visible; min-height: 75px;"):
             v3.VAppBarNavIcon(click="drawer = !drawer")
             v3.VToolbarTitle("Visualizer")
             v3.VSpacer()
-            with v3.VContainer(v_if="time_steps > 0", style="display: flex; justify-content: center"):
-                with v3.VContainer(v_if="time_steps > 0", style="max-width: 500px"):
+            with html.Div(v_if="time_steps > 0", style="position: absolute; left: 50%; top: 50%; transform: translateX(-50%); width: 500px;"):
+                with html.Div(v_if="time_steps > 0", style="max-width: 500px;"):
                     v3.VSlider(
                         key=("time_index"),
                         v_model_lazy=("time_index", 0),
+                        thumb_label="always",
                         min=0,
                         max=("time_steps", 0),
                         step = 1,
-                        density="compact",
+                        density="comfortable",
+                        label="Time Index",
                     )
         with v3.VContainer(fluid=True, classes="pa-0 fill-height"):
             view = vtk_widgets.VtkLocalView(render_window, ref="view")
