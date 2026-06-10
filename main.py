@@ -132,12 +132,31 @@ if __name__ == "__main__":
     mesh.GetProperty().SetOpacity(1.0)
 
 
+
     renderer = vtk.vtkRenderer()
     render_window = vtk.vtkRenderWindow()
     render_window.AddRenderer(renderer)
     render_window.SetWindowName("Visualize")
     render_window.SetSize(800, 800)
 
+
+    medicaltool = vtk.vtkGLTFImporter()
+    medicaltool.SetFileName("./medicaltool.glb")
+    medicaltool.SetRenderWindow(render_window)
+    medicaltool.Update()
+
+    medicalactors = medicaltool.GetImportedActors()
+    medicalactors.GetLastActor().SetScale(50, 50, 50)
+    medicalactors.GetLastActor().GetProperty().SetColor(colors.GetColor3d("Blue"))
+    medicalactors.GetLastActor().SetOrientation(45, 0, 0)
+
+    actor = medicalactors.GetLastActor()
+    print("Scale:", actor.GetScale())
+    print("Orientation:", actor.GetOrientation())
+    print("Position:", actor.GetPosition())
+    print("Origin:", actor.GetOrigin())
+    m = actor.GetMatrix()
+    print(m)
 
     renderer.AddActor(mesh)
     renderer.AddActor(segment_actor)
@@ -233,11 +252,32 @@ if __name__ == "__main__":
         state.flush()
         ctrl.view_update()
 
+
     
     state.change("mesh_file")(update_mesh_file)
     state.change("segment_file")(update_segment_file)
     state.change("time_index")(update_segment_file)
 
+    @state.change("tool_pos_x")
+    def update_tool_pos_x(tool_pos_x, **kwargs):
+        _, y, z = actor.GetPosition()
+        actor.SetPosition(tool_pos_x, y, z)
+        ctrl.view_update()
+
+    @state.change("tool_pos_y")
+    def update_tool_pos_y(tool_pos_y, **kwargs):
+        x, _, z = actor.GetPosition()
+        actor.SetPosition(x, tool_pos_y, z)
+        ctrl.view_update()
+
+    @state.change("tool_pos_z")
+    def update_tool_pos_z(tool_pos_z, **kwargs):
+        x, y, _ = actor.GetPosition()
+        actor.SetPosition(x, y, tool_pos_z)
+        ctrl.view_update()
+
+
+        
 
     @state.change("opacity")
     def update_opacity(opacity, **kwargs):
@@ -280,6 +320,13 @@ if __name__ == "__main__":
             )
             content = v3.VCardText(classes="py-2")
         return content
+
+    def tool_card():
+        with ui_card(title="Tool", ui_name="tool"):
+            with v3.VRow(classes="pt-2", density="compact"):
+                v3.VSlider(v_model=("tool_pos_x", 0), min=-100, max=100, step=1, label="x")
+                v3.VSlider(v_model=("tool_pos_y", 0), min=-100, max=100, step=1, label="y")
+                v3.VSlider(v_model=("tool_pos_z", 0), min=-100, max=100, step=1, label="z")
 
     def mesh_card():
         with ui_card(title="Mesh", ui_name="mesh"):
@@ -367,6 +414,7 @@ if __name__ == "__main__":
         with v3.VNavigationDrawer(v_model=("drawer", False), temporary=True, app=True, width=500):
             mesh_card()
             segment_card()
+            tool_card()
         with v3.VToolbar(style="display: flex; justify-content: center; overflow: visible; min-height: 75px;"):
             v3.VAppBarNavIcon(click="drawer = !drawer")
             v3.VToolbarTitle("Visualizer")
