@@ -85,6 +85,32 @@ def convert_nifti_to_vtk(nifti_file, extractor: Extractor, time_index=0):
     polydata.ShallowCopy(mc.GetOutput())
     return polydata
 
+def point_to_roi(actor_pos, target_pos):
+    direction = np.array(target_pos) - np.array(actor_pos)
+    direction /= np.linalg.norm(direction)
+    yaw = np.degrees(np.arctan2(direction[0], direction[2]))
+    pitch = np.degrees(np.arctan2(direction[1], np.sqrt(direction[0]**2 + direction[2]**2)))
+    return pitch, yaw
+
+def rot_matrix(actor_pos, target_pos):
+    forward = np.array(target_pos) - np.array(actor_pos)
+    forward /= np.linalg.norm(forward)
+
+    up = np.array([0, 1, 0])
+    right = np.cross(up, forward)
+    right /= np.linalg.norm(right)
+
+    up = np.cross(forward, right)
+
+    m = vtk.vtkMatrix4x4()
+    for i in range(3):
+        m.SetElement(i, 0, right[i])
+        m.SetElement(i, 1, up[i])
+        m.SetElement(i, 2, forward[i])
+
+    return m
+
+
 
 if __name__ == "__main__":
     file = sys.argv[1]
@@ -132,12 +158,22 @@ if __name__ == "__main__":
     mesh.GetProperty().SetOpacity(1.0)
 
 
-
     renderer = vtk.vtkRenderer()
     render_window = vtk.vtkRenderWindow()
     render_window.AddRenderer(renderer)
     render_window.SetWindowName("Visualize")
     render_window.SetSize(800, 800)
+
+    render_window_interactor = vtk.vtkRenderWindowInteractor()
+    render_window_interactor.SetRenderWindow(render_window)
+
+    mesh_box = vtk.vtkBoxWidget()
+    mesh_box.SetInteractor(render_window_interactor)
+    mesh_box.SetPlaceFactor(1.25)
+    mesh_box.SetProp3D(mesh)
+    center_x, center_y, center_z = mesh_box.GetProp3D().GetCenter()
+    mesh_box.PlaceWidget()
+    mesh_box.On()
 
 
     medicaltool = vtk.vtkGLTFImporter()
@@ -148,21 +184,18 @@ if __name__ == "__main__":
     medicalactors = medicaltool.GetImportedActors()
     medicalactors.GetLastActor().SetScale(50, 50, 50)
     medicalactors.GetLastActor().GetProperty().SetColor(colors.GetColor3d("Blue"))
-    medicalactors.GetLastActor().SetOrientation(45, 0, 0)
 
     actor = medicalactors.GetLastActor()
-    print("Scale:", actor.GetScale())
-    print("Orientation:", actor.GetOrientation())
-    print("Position:", actor.GetPosition())
-    print("Origin:", actor.GetOrigin())
-    m = actor.GetMatrix()
-    print(m)
+
+    #pitch, yaw = point_to_roi(actor.GetPosition(), mesh.GetCenter())
+    #actor.SetOrientation(-pitch, yaw, 0.0) 
 
     renderer.AddActor(mesh)
     renderer.AddActor(segment_actor)
     renderer.ResetCamera()
     renderer.SetBackground(colors.GetColor3d("CadetBlue"))
-
+    camera = renderer.GetActiveCamera()
+    camera.SetFocalPoint(mesh.GetPosition())
 
 
     server = get_server("Trame Segmentation")
@@ -264,6 +297,12 @@ if __name__ == "__main__":
         actor.SetPosition(tool_pos_x, y, z)
         ctrl.view_update()
 
+    @state.change("tool_yaw", "tool_pitch", "tool_roll")
+    def update_orientation(**kwargs):
+        actor.SetOrientation(state.tool_roll, state.tool_pitch, state.tool_yaw)
+        ctrl.view_update()
+
+   
     @state.change("tool_pos_y")
     def update_tool_pos_y(tool_pos_y, **kwargs):
         x, _, z = actor.GetPosition()
@@ -275,9 +314,6 @@ if __name__ == "__main__":
         x, y, _ = actor.GetPosition()
         actor.SetPosition(x, y, tool_pos_z)
         ctrl.view_update()
-
-
-        
 
     @state.change("opacity")
     def update_opacity(opacity, **kwargs):
@@ -324,9 +360,16 @@ if __name__ == "__main__":
     def tool_card():
         with ui_card(title="Tool", ui_name="tool"):
             with v3.VRow(classes="pt-2", density="compact"):
-                v3.VSlider(v_model=("tool_pos_x", 0), min=-100, max=100, step=1, label="x")
-                v3.VSlider(v_model=("tool_pos_y", 0), min=-100, max=100, step=1, label="y")
-                v3.VSlider(v_model=("tool_pos_z", 0), min=-100, max=100, step=1, label="z")
+                v3.VSlider(v_model=("tool_pos_x", 0), min=-1000, max=1000, step=1, label="x")
+                v3.VSlider(v_model=("tool_pos_y", 0), min=-1000, max=1000, step=1, label="y")
+                v3.VSlider(v_model=("tool_pos_z", 0), min=-1000, max=1000, step=1, label="z")
+
+            v3.VDivider(vertical=True)
+
+            with v3.VRow(classes="pt-2", density="compact"):
+                v3.VSlider(v_model=("tool_yaw", 0), min=0, max=360, step=0.1, label="yaw")
+                v3.VSlider(v_model=("tool_pitch", 0), min=0, max=360, step=0.1, label="pitch")
+                v3.VSlider(v_model=("tool_roll", 0), min=0, max=360, step=0.1, label="roll")
 
     def mesh_card():
         with ui_card(title="Mesh", ui_name="mesh"):
