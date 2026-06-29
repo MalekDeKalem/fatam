@@ -11,3 +11,4 @@ vtp/*
 uploads/*
 dicomseries/*
 *.vtp
+__pycache__

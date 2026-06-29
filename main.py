@@ -19,8 +19,6 @@ from extractor import Extractor
 
 
 
-base_path = "./CIA/BraTS-Africa/95_Glioma/BraTS-SSA-00002-000/"
-file = "Healthy-Total-Body-CTs-016.nii"
 
 def create_images(path, output_name):
     img = nib.load(path).get_fdata()
@@ -85,42 +83,11 @@ def convert_nifti_to_vtk(nifti_file, extractor: Extractor, time_index=0):
     polydata.ShallowCopy(mc.GetOutput())
     return polydata
 
-def point_to_roi(actor_pos, target_pos):
-    direction = np.array(target_pos) - np.array(actor_pos)
-    direction /= np.linalg.norm(direction)
-    yaw = np.degrees(np.arctan2(direction[0], direction[2]))
-    pitch = np.degrees(np.arctan2(direction[1], np.sqrt(direction[0]**2 + direction[2]**2)))
-    return pitch, yaw
-
-def rot_matrix(actor_pos, target_pos):
-    forward = np.array(target_pos) - np.array(actor_pos)
-    forward /= np.linalg.norm(forward)
-
-    up = np.array([0, 1, 0])
-    right = np.cross(up, forward)
-    right /= np.linalg.norm(right)
-
-    up = np.cross(forward, right)
-
-    m = vtk.vtkMatrix4x4()
-    for i in range(3):
-        m.SetElement(i, 0, right[i])
-        m.SetElement(i, 1, up[i])
-        m.SetElement(i, 2, forward[i])
-
-    return m
-
-
 
 if __name__ == "__main__":
-    file = sys.argv[1]
-    nifti_file = os.path.join(base_path, file)
     extractor = Extractor()
-    polydata = convert_nifti_to_vtk(nifti_file, extractor)
-
-    segment_file = sys.argv[2]
-    segment_nifti_file = os.path.join(base_path, segment_file)
-    segment_polydata = convert_nifti_to_vtk(segment_nifti_file, extractor)
+    polydata = vtk.vtkPolyData()
+    segment_polydata = vtk.vtkPolyData()
 
     writer = vtk.vtkPolyDataWriter()
     writer.SetFileName("data.vtp")
@@ -128,34 +95,14 @@ if __name__ == "__main__":
     writer.Write() 
 
     segment_writer = vtk.vtkPolyDataWriter()
-    segment_writer.SetFileName("segment.vtp")
-    segment_writer.SetInputData(segment_polydata)
-    segment_writer.Write()
-
     colors = vtk.vtkNamedColors()
     reader = vtk.vtkPolyDataReader()
-    reader.SetFileName("data.vtp")
 
     segment_reader = vtk.vtkPolyDataReader()
-    segment_reader.SetFileName("segment.vtp")
-
     mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputConnection(reader.GetOutputPort())
-    mapper.ScalarVisibilityOff()
-
     segment_mapper = vtk.vtkPolyDataMapper()
-    segment_mapper.SetInputConnection(segment_reader.GetOutputPort())
-    segment_mapper.ScalarVisibilityOff()
-
     segment_actor = vtk.vtkActor()
-    segment_actor.SetMapper(segment_mapper)
-    segment_actor.GetProperty().SetColor(colors.GetColor3d("Green"))
-
-
     mesh = vtk.vtkActor()
-    mesh.SetMapper(mapper)
-    mesh.GetProperty().SetColor(colors.GetColor3d("Red"))
-    mesh.GetProperty().SetOpacity(1.0)
 
 
     renderer = vtk.vtkRenderer()
@@ -170,11 +117,6 @@ if __name__ == "__main__":
     mesh_box = vtk.vtkBoxWidget()
     mesh_box.SetInteractor(render_window_interactor)
     mesh_box.SetPlaceFactor(1.25)
-    mesh_box.SetProp3D(mesh)
-    center_x, center_y, center_z = mesh_box.GetProp3D().GetCenter()
-    mesh_box.PlaceWidget()
-    mesh_box.On()
-
 
     medicaltool = vtk.vtkGLTFImporter()
     medicaltool.SetFileName("./medicaltool.glb")
@@ -187,16 +129,10 @@ if __name__ == "__main__":
 
     actor = medicalactors.GetLastActor()
 
-    #pitch, yaw = point_to_roi(actor.GetPosition(), mesh.GetCenter())
-    #actor.SetOrientation(-pitch, yaw, 0.0) 
-
     renderer.AddActor(mesh)
     renderer.AddActor(segment_actor)
     renderer.ResetCamera()
     renderer.SetBackground(colors.GetColor3d("CadetBlue"))
-    camera = renderer.GetActiveCamera()
-    camera.SetFocalPoint(mesh.GetPosition())
-
 
     server = get_server("Trame Segmentation")
     state, ctrl = server.state, server.controller 
@@ -244,6 +180,15 @@ if __name__ == "__main__":
         mapper.ScalarVisibilityOff()
         mapper.Update()
         mesh.SetMapper(mapper)
+
+
+        renderer.ResetCamera()
+        mesh_box.SetProp3D(mesh)
+        mesh_box.PlaceWidget()
+        mesh_box.On()
+        camera = renderer.GetActiveCamera()
+        camera.SetFocalPoint(mesh.GetPosition())
+
         print("Passed: ", name)
         state.flush()
         ctrl.view_update()
