@@ -10,11 +10,12 @@ Gehen Sie in das Repository und erstellen eine virtuelle Umgebung.
 Sie sollten dann die Umgebung aktivieren 
 und die dependecies in requirements.txt mit pip installieren.
 
-`cd fatam 
+```
+cd fatam 
 python -m venv env
 source env/bin/activate
 pip install requirements.txt
-`
+```
 
 Welchen activate script man benutzen soll hängt vom Terminal ab 
 
